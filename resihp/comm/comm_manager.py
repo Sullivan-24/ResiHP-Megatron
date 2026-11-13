@@ -84,10 +84,10 @@ def _is_order_preserving_subset(new: list[str], old: tuple[str, ...]) -> bool:
 class ResilientCommManager:
     def __init__(self, backend: str = "gloo", *, device: str | None = None, timeout_s: float = 60.0,
                  validate_timeout_s: float = 30.0, validate: bool = True, shrink: str = "auto",
-                 subgroup_mode: str = "split", nccl_nonblocking: bool = True, poll_interval_s: float = 0.0005):
+                 subgroup_mode: str = "auto", nccl_nonblocking: bool = True, poll_interval_s: float = 0.0005):
         if shrink not in ("auto", "never", "always"):
             raise ValueError(shrink)
-        if subgroup_mode not in ("split", "local"):
+        if subgroup_mode not in ("auto", "split", "local"):
             raise ValueError(subgroup_mode)
         self.backend = backend
         self.device = device
@@ -119,7 +119,13 @@ class ResilientCommManager:
         return caps
 
     def can_shrink(self, new_world: list[str]) -> bool:
+        """``ncclCommShrink`` must run on a live parent communicator: SHRINK_ABORT is how NCCL
+        cancels the parent's in-flight work, so a communicator this process already aborted (to
+        unblock the training thread on a failure notice) can only be rebuilt from scratch. The
+        fast path therefore applies to planned reconfigurations, not to fail-stop recovery."""
         if self.shrink == "never" or self.current is None or self.backend != "nccl":
+            return False
+        if self._aborted_since_build:
             return False
         caps = self.capabilities()
         nccl_ok = caps["nccl_version"] is not None and tuple(caps["nccl_version"]) >= (2, 27, 3)
@@ -139,15 +145,17 @@ class ResilientCommManager:
               store=None, store_addr: tuple[str, int] | None = None, store_prefix: str | None = None) -> GenerationComms:
         """Create (or shrink to) the communicators of ``generation``; raises on abort/timeout/peer failure."""
         t0 = time.monotonic()
-        self._abort.clear()
-        self._aborted_since_build = False
         rank = world.index(my_id)
         for s in specs:
             if any(r >= len(world) for r in s.ranks):
                 raise ValueError(f"group {s.name} references rank outside world of size {len(world)}")
+        # can_shrink() inspects whether this process aborted its communicators, so decide the path
+        # before clearing that state.
         path = "shrink" if (self.shrink != "never" and self.can_shrink(world)) else "fresh"
         if self.shrink == "always" and path != "shrink":
             raise RuntimeError("shrink requested but not possible for this transition")
+        self._abort.clear()
+        self._aborted_since_build = False
         if path == "shrink":
             self._shrink_world(world)
         else:
@@ -193,10 +201,22 @@ class ResilientCommManager:
         excluded = [i for i, w in enumerate(self.current.world) if w not in keep]
         dist.shrink_group(excluded, group=None, shrink_flags=c10d.SHRINK_ABORT)
 
+    @staticmethod
+    def split_group_usable() -> bool:
+        """``split_group`` needs the default group bound to an accelerator device, which only an
+        accelerator backend (NCCL) can be: ``init_process_group`` rejects ``device_id=\"cpu\"``.
+        On gloo it is therefore never available and ``new_group`` must be used instead."""
+        return hasattr(dist, "split_group") and c10d._get_default_group().bound_device_id is not None
+
+    def subgroup_path(self) -> str:
+        if self.subgroup_mode != "auto":
+            return self.subgroup_mode
+        return "split" if self.split_group_usable() else "local"
+
     def _make_subgroups(self, rank: int, specs: list[GroupSpec]) -> dict[str, Any]:
         groups: dict[str, Any] = {}
         by_ranks: dict[tuple[int, ...], Any] = {}
-        if self.subgroup_mode == "split":
+        if self.subgroup_path() == "split":
             for layer in split_layers(specs):
                 self._check_abort()
                 split = [list(s.ranks) for s in layer]
@@ -300,11 +320,15 @@ class ResilientCommManager:
             return
         with self._lock:
             live = list(self._live)
-        for pg in live:
+        t0 = time.monotonic()
+        # Children first: aborting the parent while a communicator split from it still has
+        # in-flight work to a dead peer does not return at all.
+        for pg in reversed(live):
             try:
                 pg.abort()
             except Exception:  # noqa: BLE001 - best effort; the watchdog is the backstop
                 pass
+        log.info("aborted %d communicators in %.2fs", len(live), time.monotonic() - t0)
 
     @property
     def aborted(self) -> bool:

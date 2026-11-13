@@ -44,8 +44,6 @@ def main(argv=None) -> None:
     client = WorkerClient(hb_interval=0.1).connect()
     device = "cpu"
     if args.backend == "nccl":
-        import torch.cuda
-
         torch.cuda.set_device(int(os.environ.get("RESIHP_LOCAL_RANK", "0")))
         device = f"cuda:{torch.cuda.current_device()}"
     mgr = ResilientCommManager(args.backend, device=device, timeout_s=args.timeout,

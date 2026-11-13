@@ -39,7 +39,7 @@ def _build_and_check(rank, world, port, store_addr, mode):
     mgr = ResilientCommManager("gloo", timeout_s=20, subgroup_mode=mode)
     ids = [f"w{i}" for i in range(world)]
     comms = mgr.build(1, ids, ids[rank], _specs(SPECS4), store_addr=store_addr, store_prefix=f"t-{mode}/gen1/")
-    sums = {}
+    sums = {"__path__": mgr.subgroup_path()}
     for name in sorted(comms.specs):
         pg = comms.group(name)
         if pg is None:
@@ -51,10 +51,13 @@ def _build_and_check(rank, world, port, store_addr, mode):
     return sums
 
 
-@pytest.mark.parametrize("mode", ["split", "local"])
+# split_group is accelerator-only (see ResilientCommManager.split_group_usable), so on gloo
+# "auto" must resolve to new_group; the split path is covered by tests/gpu/test_nccl_shrink.py.
+@pytest.mark.parametrize("mode", ["auto", "local"])
 def test_build_validates_and_groups_are_correct(store, mode):
     out = spawn(_build_and_check, 4, store, mode, timeout=90)
     expected = {n: float(sum(r)) for n, r, _ in SPECS4}
+    assert {s.pop("__path__") for s in out.values()} == {"local"}
     for rank, sums in out.items():
         for name, ranks, _ in SPECS4:
             if rank in ranks:

@@ -21,10 +21,23 @@ def free_port() -> int:
         return s.getsockname()[1]
 
 
+def _file_system_sharing() -> None:
+    """Ship result tensors through files instead of file descriptors.
+
+    Linux defaults to the ``file_descriptor`` strategy, where the receiver fetches the fd from
+    the sender's resource sharer; a worker that returns a tensor and exits immediately takes
+    that server with it and the parent blocks forever. (macOS already defaults to this.)
+    """
+    import torch.multiprocessing as tmp
+
+    tmp.set_sharing_strategy("file_system")
+
+
 def _entry(fn: Callable, rank: int, world: int, port: int, q: Any, args: tuple) -> None:
     os.environ.setdefault("GLOO_SOCKET_IFNAME", loopback_iface())
     os.environ["MASTER_ADDR"] = "127.0.0.1"
     os.environ["MASTER_PORT"] = str(port)
+    _file_system_sharing()
     try:
         q.put((rank, "ok", fn(rank, world, port, *args)))
     except BaseException as e:  # noqa: BLE001 - surface every worker failure to the test
@@ -37,6 +50,7 @@ def spawn(fn: Callable, world: int, *args: Any, timeout: float = 120.0,
 
     Ranks in ``expect_dead`` may exit without reporting (they are killed on purpose).
     """
+    _file_system_sharing()
     ctx = mp.get_context("spawn")
     q = ctx.Queue()
     port = free_port()

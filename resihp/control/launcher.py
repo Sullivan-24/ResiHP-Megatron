@@ -70,6 +70,9 @@ def main(argv: list[str] | None = None) -> int:
     a.add_argument("--nproc", type=int, default=8)
     a.add_argument("--devices", default="", help="comma-separated device list, default cuda:0..nproc-1")
     a.add_argument("--host", default="127.0.0.1")
+    a.add_argument("--worker-timeout", type=float, default=2.0, help="heartbeat gap that means a hang")
+    a.add_argument("--startup-timeout", type=float, default=600.0,
+                   help="heartbeat gap tolerated while a worker starts up or rebuilds a generation")
     a.add_argument("cmd", nargs=argparse.REMAINDER)
 
     loc = sub.add_parser("local")
@@ -77,6 +80,9 @@ def main(argv: list[str] | None = None) -> int:
     loc.add_argument("--nproc-per-node", type=int, default=2)
     loc.add_argument("--planner")
     loc.add_argument("--hang-timeout", type=float, default=60.0)
+    loc.add_argument("--worker-timeout", type=float, default=2.0)
+    loc.add_argument("--startup-timeout", type=float, default=600.0)
+    loc.add_argument("--devices", default="", help="comma-separated device list, default cpu")
     loc.add_argument("cmd", nargs=argparse.REMAINDER)
 
     args = ap.parse_args(argv)
@@ -96,7 +102,8 @@ def main(argv: list[str] | None = None) -> int:
         cmd = args.cmd[1:] if args.cmd and args.cmd[0] == "--" else args.cmd
         addrs = [parse_addr(s) for s in args.coordinator.split(",")]
         devices = args.devices.split(",") if args.devices else [f"cuda:{i}" for i in range(args.nproc)]
-        agent = NodeAgent(args.node_id, addrs, host=args.host,
+        agent = NodeAgent(args.node_id, addrs, host=args.host, worker_timeout=args.worker_timeout,
+                          startup_timeout=args.startup_timeout,
                           health_probe=CompositeProbe(NVMLProbe(), IBPortProbe())).start()
         if cmd:
             agent.spawn(cmd, args.nproc, devices=devices)
@@ -108,9 +115,11 @@ def main(argv: list[str] | None = None) -> int:
     coord = Coordinator(planner=_load_planner(args.planner), expected_workers=args.nnodes * args.nproc_per_node,
                         hang_timeout=args.hang_timeout).start()
     agents = []
+    devices = args.devices.split(",") if args.devices else ["cpu"] * args.nproc_per_node
     for n in range(args.nnodes):
-        agent = NodeAgent(f"n{n}", [coord.address]).start()
-        agent.spawn(cmd, args.nproc_per_node, devices=["cpu"] * args.nproc_per_node)
+        agent = NodeAgent(f"n{n}", [coord.address], worker_timeout=args.worker_timeout,
+                          startup_timeout=args.startup_timeout).start()
+        agent.spawn(cmd, args.nproc_per_node, devices=devices)
         agents.append(agent)
 
     def all_exited() -> bool:

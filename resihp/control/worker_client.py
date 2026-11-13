@@ -186,6 +186,8 @@ class WorkerClient:
                 if gen > self._notice_gen:
                     self._notice_gen = gen
                     self._notice = m
+                    log.info("notice for generation %d (immediate=%s, in_control_wait=%s)", gen,
+                             m.get("immediate", True), self._in_control_wait)
                     if self._in_control_wait:
                         self._ack_locked()
                     elif m.get("immediate", True):

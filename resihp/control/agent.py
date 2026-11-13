@@ -26,6 +26,8 @@ from resihp.utils.rpc import Connection, Server, connect, fmt_addr
 
 log = get_logger(__name__)
 
+STARTUP_PHASES = ("init", "rebuild")
+
 
 def pid_alive(pid: int) -> bool:
     if pid <= 0:
@@ -54,16 +56,23 @@ class LocalWorker:
     last_hb: float = field(default_factory=time.monotonic)
     progress: dict = field(default_factory=dict)
     dead: bool = False
+    training: bool = False
+    """False while the worker is starting up or rebuilding a generation. Creating CUDA contexts
+    and NCCL communicators holds the GIL for seconds at a time, so heartbeats stop and the tight
+    hang timeout only applies once the worker reports a training phase. A worker stuck in a
+    rebuild is caught by the coordinator's READY timeout instead."""
 
 
 class NodeAgent:
     def __init__(self, node_id: str, coordinator_addrs: list[tuple[str, int]], *, host: str = "127.0.0.1",
                  port: int = 0, hb_interval: float = 0.25, worker_timeout: float = 2.0,
-                 self_fence_after: float = 5.0, health_probe=None, health_every: int = 8):
+                 startup_timeout: float = 600.0, self_fence_after: float = 5.0, health_probe=None,
+                 health_every: int = 8):
         self.node_id = node_id
         self.coordinator_addrs = list(coordinator_addrs)
         self.hb_interval = hb_interval
         self.worker_timeout = worker_timeout
+        self.startup_timeout = startup_timeout
         self.self_fence_after = self_fence_after
         self.health_probe = health_probe
         self.health_every = health_every
@@ -145,6 +154,7 @@ class NodeAgent:
             w.last_hb = now
             if kind == P.HEARTBEAT:
                 w.progress = m.get("progress", {})
+                w.training = w.progress.get("phase", "init") not in STARTUP_PHASES
                 return
         self._to_coord(P.msg(P.WORKER_MSG, worker_id=wid, msg=m))
 
@@ -187,8 +197,10 @@ class NodeAgent:
                         self._mark_dead(w, f"exited with {w.proc.returncode}")
                     elif w.proc is None and w.pid and not pid_alive(w.pid):
                         self._mark_dead(w, "process gone")
-                    elif w.conn is not None and now - w.last_hb > self.worker_timeout:
-                        self._mark_dead(w, f"heartbeat stalled {now - w.last_hb:.1f}s (hang)")
+                    else:
+                        limit = self.worker_timeout if w.training else self.startup_timeout
+                        if w.conn is not None and now - w.last_hb > limit:
+                            self._mark_dead(w, f"heartbeat stalled {now - w.last_hb:.1f}s (hang)")
             polls += 1
             if self.health_probe is not None and polls % self.health_every == 0:
                 for ev in self.health_probe.poll():
@@ -221,6 +233,8 @@ class NodeAgent:
                     workers = [{"worker_id": w.worker_id, "node_id": self.node_id, "local_rank": w.local_rank,
                                 "pid": w.pid, "device": w.device}
                                for w in self.workers.values() if not w.dead and w.conn is not None]
+                log.warning("agent %s connected to coordinator at %s with %d workers", self.node_id,
+                            fmt_addr(addr), len(workers))
                 conn.send(P.msg(P.AGENT_REGISTER, node_id=self.node_id, workers=workers))
                 return True
             time.sleep(0.1)

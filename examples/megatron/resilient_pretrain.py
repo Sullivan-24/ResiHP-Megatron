@@ -118,7 +118,7 @@ def main() -> None:
         state_key=stable_key, tensor_specs=gpt_tensor_specs(args), layer_of=layer_of(args.num_layers),
         partition_sizes=tuple(sorted({args.hidden_size, args.ffn_hidden_size, args.padded_vocab_size})),
         hidden=args.hidden_size, seq_length=args.seq_length, micro_batch_size=args.micro_batch_size,
-        tp_base=args.tensor_model_parallel_size)
+        tp_base=args.tensor_model_parallel_size, seed=args.seed)
     client = WorkerClient().connect()
     mgr = ResilientCommManager("nccl", device=f"cuda:{torch.cuda.current_device()}", timeout_s=600)
     ResilientTrainer(client, mgr, MegatronBinding(job, mgr, client)).run(args.train_iters)

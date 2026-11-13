@@ -61,6 +61,7 @@ class MegatronJob:
     micro_batch_size: int
     tp_base: int
     dtype: torch.dtype = torch.bfloat16
+    seed: int = 1234
 
 
 @dataclass
@@ -122,9 +123,18 @@ class MegatronBinding:
             txm.adopt(target)
         else:
             txm.discard()
+        from megatron.core.tensor_parallel.random import model_parallel_cuda_manual_seed
+
         layout = stage_layout(plan, comms)
         pgc = build_pg_collection(plan, comms)
         config = job.build_config(layout)
+        # Megatron seeds its model-parallel RNG tracker in initialize_megatron, which ResiHP
+        # replaces; without it building a tensor-parallel layer raises. The tensor-parallel
+        # stream must differ per TP rank and follow the rank's position in the new plan.
+        model_parallel_cuda_manual_seed(job.seed + 100 * layout["stage"], tp_rank=layout["tp_rank"],
+                                        ep_rank=0, etp_rank=0, gtp_remat_rank=0, egtp_remat_rank=0,
+                                        gtp_remat_world_size=1, egtp_remat_world_size=1,
+                                        force_reset_rng=True)
         model = job.model_provider(config=config, pre_process=layout["pre_process"],
                                    post_process=layout["post_process"], pg_collection=pgc)
         bundle = wrap_model(model, config, job.ddp_config, plan, comms, self.mgr, pgc, job.tp_base)

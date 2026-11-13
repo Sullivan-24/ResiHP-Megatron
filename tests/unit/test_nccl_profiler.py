@@ -51,7 +51,9 @@ class Profiler(ctypes.Structure):
 @pytest.mark.skipif(CC is None, reason="no C compiler")
 def test_plugin_records_coll_and_p2p(tmp_path, monkeypatch):
     lib = tmp_path / "libresihp_nccl_profiler.so"
-    subprocess.run([CC, "-O2", "-fPIC", "-shared", "-std=c11", "-Wall", "-Werror", "-o", str(lib),
+    # Same flags as the plugin's Makefile: with -std=c11 glibc hides clock_gettime and
+    # ftruncate unless _GNU_SOURCE is defined.
+    subprocess.run([CC, "-O2", "-fPIC", "-shared", "-std=c11", "-D_GNU_SOURCE", "-Wall", "-Werror", "-o", str(lib),
                     str(SRC / "resihp_nccl_profiler.c"), "-lpthread"], check=True)
     monkeypatch.setenv("RESIHP_NCCL_PROF_DIR", str(tmp_path))
     prof = Profiler.in_dll(ctypes.CDLL(str(lib)), "ncclProfiler_v5")

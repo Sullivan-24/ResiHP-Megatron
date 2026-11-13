@@ -113,6 +113,9 @@ class ResilientTrainer:
     def _reconfigure(self) -> None:
         t0 = time.monotonic()
         while True:
+            # Rebuilding communicators blocks the GIL for seconds; tell the agent not to apply its
+            # training-time hang timeout until this worker is computing again.
+            self.client.set_progress(phase="rebuild", in_collective=False)
             self.client.set_recovery_info(**self.txm.recovery_info())
             prep = self.client.wait_prepare(timeout=self.prepare_timeout)
             gen, world, payload = prep["gen"], prep["world"], prep["payload"]

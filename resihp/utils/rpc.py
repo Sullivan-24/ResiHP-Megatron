@@ -116,8 +116,14 @@ class Server:
                 s, _ = self._sock.accept()
             except OSError:
                 break
-            conn = Connection(s, self._on_message, self._closed)
             with self._lock:
+                # A connection accepted from the backlog while stop() runs must be refused, not
+                # served: a deposed coordinator that keeps answering strands the agent on a
+                # server that will never act, until its node lease expires.
+                if self._stopped:
+                    s.close()
+                    break
+                conn = Connection(s, self._on_message, self._closed)
                 self.connections.add(conn)
             if self._on_connect is not None:
                 self._on_connect(conn)
@@ -129,13 +135,14 @@ class Server:
             self._on_close(conn)
 
     def stop(self) -> None:
-        self._stopped = True
+        with self._lock:
+            self._stopped = True
         try:
             self._sock.close()
         except OSError:
             pass
         with self._lock:
-            conns = list(self.connections)
+            conns, self.connections = list(self.connections), set()
         for c in conns:
             c.close()
 

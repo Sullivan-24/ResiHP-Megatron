@@ -1,0 +1,82 @@
+[
+  {
+    "gpus": 64,
+    "dp": 2,
+    "scenario": "1 GPU lost",
+    "ResiHP": 0.8986170254665862,
+    "no TP shrink": 0.8983524469170275,
+    "no repartition": 0.8002228000653129,
+    "no migration": 0.8983524469170275,
+    "replica drop": 0.5657526708748124
+  },
+  {
+    "gpus": 64,
+    "dp": 2,
+    "scenario": "2 GPUs lost (2 replicas)",
+    "ResiHP": 0.9096307483115201,
+    "no TP shrink": null,
+    "no repartition": 0.5684131259467046,
+    "no migration": 0.9096307483115201,
+    "replica drop": 0.3170719844503312
+  },
+  {
+    "gpus": 64,
+    "dp": 2,
+    "scenario": "node lost",
+    "ResiHP": 0.8983524469170275,
+    "no TP shrink": 0.8983524469170275,
+    "no repartition": 0.5963852598276966,
+    "no migration": 0.8983524469170275,
+    "replica drop": 0.5657526708748124
+  },
+  {
+    "gpus": 64,
+    "dp": 2,
+    "scenario": "1 GPU 2x slow",
+    "ResiHP": 0.8986170254665862,
+    "no TP shrink": 0.8983524469170275,
+    "no repartition": 0.8002228000653129,
+    "no migration": 0.8983524469170275,
+    "replica drop": 0.5
+  },
+  {
+    "gpus": 128,
+    "dp": 4,
+    "scenario": "1 GPU lost",
+    "ResiHP": 0.9154407468252853,
+    "no TP shrink": 0.873202343773353,
+    "no repartition": 0.900169240955362,
+    "no migration": 0.9154407468252853,
+    "replica drop": 0.7577151715926403
+  },
+  {
+    "gpus": 128,
+    "dp": 4,
+    "scenario": "2 GPUs lost (2 replicas)",
+    "ResiHP": 0.8710052623604286,
+    "no TP shrink": 0.853797504004773,
+    "no repartition": 0.7900928008134182,
+    "no migration": 0.8213949347819819,
+    "replica drop": 0.698443903416733
+  },
+  {
+    "gpus": 128,
+    "dp": 4,
+    "scenario": "node lost",
+    "ResiHP": 0.873202343773353,
+    "no TP shrink": 0.873202343773353,
+    "no repartition": 0.7950984997163782,
+    "no migration": 0.873202343773353,
+    "replica drop": 0.7577151715926403
+  },
+  {
+    "gpus": 128,
+    "dp": 4,
+    "scenario": "1 GPU 2x slow",
+    "ResiHP": 0.9154407468252853,
+    "no TP shrink": 0.9154407468252853,
+    "no repartition": 0.900169240955362,
+    "no migration": 0.9154407468252853,
+    "replica drop": 0.5
+  }
+]

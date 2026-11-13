@@ -1,0 +1,26 @@
+name: gpu-integration
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 18 * * *"
+
+jobs:
+  gpu8:
+    runs-on: [self-hosted, linux, gpu-8x]
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Megatron + patches
+        run: bash scripts/setup_megatron.sh
+      - name: Install
+        run: pip install -e ".[dev,nvml]"
+      - name: GPU integration tests (NCCL shrink/split fast path, Megatron adapters)
+        env:
+          PYTHONPATH: third_party/Megatron-LM
+          TORCH_NCCL_ASYNC_ERROR_HANDLING: "2"
+        run: pytest -q -m gpu --durations=15
+      - name: Chaos smoke (single node, kill -9 + slow GPU)
+        env:
+          PYTHONPATH: third_party/Megatron-LM
+        run: bash examples/megatron/chaos_smoke.sh

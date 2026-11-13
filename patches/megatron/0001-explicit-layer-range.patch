@@ -1,0 +1,48 @@
+diff --git a/megatron/core/transformer/transformer_block.py b/megatron/core/transformer/transformer_block.py
+index 7b53fae..467d12b 100755
+--- a/megatron/core/transformer/transformer_block.py
++++ b/megatron/core/transformer/transformer_block.py
+@@ -95,6 +95,11 @@ def get_num_layers_to_build(
+     Returns:
+         int: The number of layers to be built for the current pipeline stage.
+     """
++    if getattr(config, "resihp_layer_range", None) is not None:
++        assert vp_stage is None, "resihp_layer_range does not support virtual pipeline stages"
++        start, end = config.resihp_layer_range
++        return end - start
++
+     # If we have a custom PP layout, straightforwardly
+     # return the number of decoders in the layout array.
+     if config.pipeline_model_parallel_layout is not None:
+diff --git a/megatron/core/transformer/transformer_config.py b/megatron/core/transformer/transformer_config.py
+index 91ce3a8..98639f6 100644
+--- a/megatron/core/transformer/transformer_config.py
++++ b/megatron/core/transformer/transformer_config.py
+@@ -151,6 +151,12 @@ class TransformerConfig(ModelParallelConfig):
+     """Number of transformer layers on last pipeline stage.
+     None implies equal layer division across PP ranks."""
+ 
++    resihp_layer_range: Optional[Tuple[int, int]] = None
++    """Half-open range [start, end) of decoder layers built on this rank. Set by runtimes that
++    choose uneven pipeline partitions at run time (e.g. after failures); takes precedence over
++    pipeline_model_parallel_layout and the first/last-stage layer counts. Not supported with
++    virtual pipeline parallelism."""
++
+     pipeline_model_parallel_layout: Optional[Union[str, list, PipelineParallelLayerLayout]] = None
+     """Custom definition of the pipeline parallel partitioning.
+     Support type:
+diff --git a/megatron/core/transformer/transformer_layer.py b/megatron/core/transformer/transformer_layer.py
+index 6083044..2f50135 100644
+--- a/megatron/core/transformer/transformer_layer.py
++++ b/megatron/core/transformer/transformer_layer.py
+@@ -87,6 +87,10 @@ def get_transformer_layer_offset(
+     config: TransformerConfig, vp_stage: Optional[int] = None, pp_rank: Optional[int] = None
+ ):
+     """Get the index offset of current pipeline stage, given the level of pipelining."""
++    if getattr(config, "resihp_layer_range", None) is not None:
++        assert vp_stage is None, "resihp_layer_range does not support virtual pipeline stages"
++        return config.resihp_layer_range[0]
++
+     if pp_rank is None:
+         pp_rank = parallel_state.get_pipeline_model_parallel_rank()
+ 

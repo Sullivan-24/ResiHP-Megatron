@@ -1,0 +1,36 @@
+diff --git a/megatron/core/pipeline_parallel/p2p_communication.py b/megatron/core/pipeline_parallel/p2p_communication.py
+index be6a834..d0cac18 100644
+--- a/megatron/core/pipeline_parallel/p2p_communication.py
++++ b/megatron/core/pipeline_parallel/p2p_communication.py
+@@ -152,7 +152,15 @@ class P2PCommunicator:
+     tensor exchanges between consecutive stages in the pipeline.
+     """
+ 
+-    def __init__(self, pp_group: dist.ProcessGroup, config: ModelParallelConfig):
++    def __init__(
++        self,
++        pp_group: dist.ProcessGroup,
++        config: ModelParallelConfig,
++        prev_rank: Optional[int] = None,
++        next_rank: Optional[int] = None,
++    ):
++        """``prev_rank``/``next_rank`` (global ranks) override the ring neighbors of ``pp_group``,
++        which lets a schedule run on pipelines whose stages have different TP layouts."""
+         # Basic attrs
+         self.pp_group = pp_group
+         self.config = config
+@@ -163,8 +171,12 @@ class P2PCommunicator:
+         next_rank_pg = (curr_rank_in_pg + 1) % world_size
+         prev_rank_pg = (curr_rank_in_pg - 1) % world_size
+ 
+-        self.next_rank: int | None = dist.get_global_rank(self.pp_group, next_rank_pg)
+-        self.prev_rank: int | None = dist.get_global_rank(self.pp_group, prev_rank_pg)
++        self.next_rank: int | None = (
++            next_rank if next_rank is not None else dist.get_global_rank(self.pp_group, next_rank_pg)
++        )
++        self.prev_rank: int | None = (
++            prev_rank if prev_rank is not None else dist.get_global_rank(self.pp_group, prev_rank_pg)
++        )
+         self.virtual_pipeline_model_parallel_size = (
+             config.virtual_pipeline_model_parallel_size
+             if config.virtual_pipeline_model_parallel_size is not None

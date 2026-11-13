@@ -1,0 +1,32 @@
+diff --git a/megatron/core/model_parallel_config.py b/megatron/core/model_parallel_config.py
+--- a/megatron/core/model_parallel_config.py
++++ b/megatron/core/model_parallel_config.py
+@@ -469,6 +469,11 @@
+     delay_wgrad_compute: bool = False
+     """Delay the weight gradient computation to improve batch-level communication overlapping"""
+ 
++    external_wgrad_schedule: bool = False
++    """An externally registered pipeline schedule calls ``backward_dw()`` itself (for example a
++    zero-bubble W instruction), so ``delay_wgrad_compute`` does not require
++    ``overlap_moe_expert_parallel_comm``."""
++
+     overlap_dispatch_backward_with_experts_wgrad: bool = False
+     """Delay the weight gradient computation for TE Grouped GEMM MoE experts.
+     When enabled with FSDP, the expert weight gradients are computed on a separate
+diff --git a/megatron/core/transformer/transformer_config.py b/megatron/core/transformer/transformer_config.py
+--- a/megatron/core/transformer/transformer_config.py
++++ b/megatron/core/transformer/transformer_config.py
+@@ -5696,9 +5696,10 @@
+ 
+         # Check delay_wgrad_compute compatibility
+         if self.delay_wgrad_compute:
+-            assert (
+-                self.overlap_moe_expert_parallel_comm
+-            ), 'overlap_moe_expert_parallel_comm must be enabled when enabling delay_wgrad_compute'
++            assert self.overlap_moe_expert_parallel_comm or self.external_wgrad_schedule, (
++                'overlap_moe_expert_parallel_comm (or external_wgrad_schedule) must be enabled '
++                'when enabling delay_wgrad_compute'
++            )
+             if self.cuda_graph_impl == "transformer_engine":
+                 assert is_te_min_version("2.10.0"), (
+                     'TE version >= 2.10.0 is required for delay_wgrad_compute with '

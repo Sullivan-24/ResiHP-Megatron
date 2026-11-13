@@ -1,0 +1,13 @@
+.venv/
+.cache/
+__pycache__/
+*.egg-info/
+*.pyc
+third_party/Megatron-LM/
+.pytest_cache/
+*.so
+*.dylib
+
+# resihp-bench writes its tables under results/; the committed ones back README.md and
+# docs/evaluation.md, scratch run logs do not.
+results/*.log

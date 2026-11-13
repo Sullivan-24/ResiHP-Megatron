@@ -1,0 +1,15 @@
+diff --git a/megatron/training/initialize.py b/megatron/training/initialize.py
+index 42c0ea7..ab06731 100644
+--- a/megatron/training/initialize.py
++++ b/megatron/training/initialize.py
+@@ -426,6 +426,10 @@ def _initialize_distributed(
+             'rank': args.rank,
+             'timeout': timedelta(minutes=cfg.dist.distributed_timeout_minutes),
+         }
++        # Eager NCCL init binds the default group to a device so communicator errors surface at
++        # init time and subgroups can be created with ncclCommSplit / shrunk with ncclCommShrink.
++        if device_id is not None and os.environ.get("MEGATRON_EAGER_NCCL_INIT", "0") == "1":
++            init_process_group_kwargs['device_id'] = device_id
+         if cfg.dist.fake_process_group:
+             assert is_torch_min_version(
+                 "2.3.0"

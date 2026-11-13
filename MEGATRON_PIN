@@ -1,0 +1,6 @@
+repo=https://github.com/NVIDIA/Megatron-LM.git
+branch=dev
+commit=14afab70d2a39d0e50ccb725d3cc81ea627785a8
+date=2026-11-05T14:49:08Z
+megatron_core_version=0.21.0
+reason=first dev commit we validated that ships megatron/core/distributed/nonuniform_tp.py and megatron/core/resharding

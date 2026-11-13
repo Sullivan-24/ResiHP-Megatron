@@ -1,0 +1,35 @@
+diff --git a/megatron/core/parallel_state.py b/megatron/core/parallel_state.py
+index a6f9989..e14926b 100644
+--- a/megatron/core/parallel_state.py
++++ b/megatron/core/parallel_state.py
+@@ -2731,8 +2731,13 @@ def get_all_ranks():
+     return "_".join(map(lambda x: str(x or 0), ranks))
+ 
+ 
+-def destroy_model_parallel():
+-    """Set the groups to none."""
++def destroy_model_parallel(destroy_groups: bool = False):
++    """Set the groups to none.
++
++    With ``destroy_groups=True`` the NCCL/Gloo communicators created through ``create_group``
++    are destroyed as well, so the model-parallel layout can be rebuilt in the same process
++    (e.g. after shrinking the world) without leaking communicators.
++    """
+     # MoonEP's symmetric-memory windows must be released while their expert process group
+     # is still alive. Idempotent and a no-op when virtual experts were never initialized.
+     try:
+@@ -2934,6 +2939,14 @@ def destroy_model_parallel():
+     _INTRA_DISTRIBUTED_OPTIMIZER_INSTANCE_GROUP = None
+ 
+     global _global_process_group_list
++    if destroy_groups and _global_process_group_list and torch.distributed.is_initialized():
++        for group in _global_process_group_list:
++            if group is None:
++                continue
++            try:
++                torch.distributed.destroy_process_group(group)
++            except Exception:
++                logger.warning("Failed to destroy a model-parallel process group", exc_info=True)
+     _global_process_group_list = None
+ 
+     SymmetricMemoryManager.destroy()

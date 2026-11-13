@@ -1,0 +1,173 @@
+{
+  "kill": {
+    "trials": [
+      {
+        "fault": "kill",
+        "recovered": true,
+        "detect_s": 0.007097541936673224,
+        "abort_s": 0.0363017920171842,
+        "plan_s": 0.005581250065006316,
+        "build_and_migrate_s": 0.03017895796801895,
+        "commit_s": 0.018586624995805323,
+        "total_s": 0.09782849997282028,
+        "resume_s": 0.21241799998097122,
+        "generations": 2,
+        "final_world": 6,
+        "correct": true
+      },
+      {
+        "fault": "kill",
+        "recovered": true,
+        "detect_s": 0.0067423329455778,
+        "abort_s": 0.010404667002148926,
+        "plan_s": 0.006093250005505979,
+        "build_and_migrate_s": 0.030608791043050587,
+        "commit_s": 0.011477874941192567,
+        "total_s": 0.06542041595093906,
+        "resume_s": 0.1486919589806348,
+        "generations": 2,
+        "final_world": 6,
+        "correct": true
+      },
+      {
+        "fault": "kill",
+        "recovered": true,
+        "detect_s": 0.005856540985405445,
+        "abort_s": 0.004314459045417607,
+        "plan_s": 0.004516958026215434,
+        "build_and_migrate_s": 0.03275266697164625,
+        "commit_s": 0.0021072080126032233,
+        "total_s": 0.049623708007857203,
+        "resume_s": 10.272250917041674,
+        "generations": 2,
+        "final_world": 6,
+        "correct": true
+      }
+    ],
+    "recovered": 3,
+    "median": {
+      "detect_s": 0.0067423329455778,
+      "abort_s": 0.010404667002148926,
+      "plan_s": 0.005581250065006316,
+      "build_and_migrate_s": 0.030608791043050587,
+      "commit_s": 0.011477874941192567,
+      "total_s": 0.06542041595093906,
+      "resume_s": 0.21241799998097122
+    },
+    "all_correct": true
+  },
+  "hang": {
+    "trials": [
+      {
+        "fault": "hang",
+        "recovered": true,
+        "detect_s": 2.9815139999845996,
+        "abort_s": 0.02253570791799575,
+        "plan_s": 0.00919354206416756,
+        "build_and_migrate_s": 0.04408875002991408,
+        "commit_s": 0.005364165990613401,
+        "total_s": 3.063027249998413,
+        "resume_s": 7.309689834015444,
+        "generations": 2,
+        "final_world": 6,
+        "correct": true
+      },
+      {
+        "fault": "hang",
+        "recovered": true,
+        "detect_s": 2.9887459999881685,
+        "abort_s": 0.018777625053189695,
+        "plan_s": 0.008267290890216827,
+        "build_and_migrate_s": 0.04324295907281339,
+        "commit_s": 0.0026331249391660094,
+        "total_s": 3.0620149589376524,
+        "resume_s": 7.279066874994896,
+        "generations": 2,
+        "final_world": 6,
+        "correct": true
+      },
+      {
+        "fault": "hang",
+        "recovered": true,
+        "detect_s": 2.982088958960958,
+        "abort_s": 0.02058987505733967,
+        "plan_s": 0.008932915981858969,
+        "build_and_migrate_s": 0.04759737499989569,
+        "commit_s": 0.016371791949495673,
+        "total_s": 3.076175791909918,
+        "resume_s": 7.237479667062871,
+        "generations": 2,
+        "final_world": 6,
+        "correct": true
+      }
+    ],
+    "recovered": 3,
+    "median": {
+      "detect_s": 2.982088958960958,
+      "abort_s": 0.02058987505733967,
+      "plan_s": 0.008932915981858969,
+      "build_and_migrate_s": 0.04408875002991408,
+      "commit_s": 0.005364165990613401,
+      "total_s": 3.063027249998413,
+      "resume_s": 7.279066874994896
+    },
+    "all_correct": true
+  },
+  "slow": {
+    "trials": [
+      {
+        "fault": "slow",
+        "recovered": true,
+        "detect_s": 0.16868887492455542,
+        "abort_s": 0.05973012500908226,
+        "plan_s": 0.004544208059087396,
+        "build_and_migrate_s": 0.052287541911937296,
+        "commit_s": 0.0071889160899445415,
+        "total_s": 0.2924396659946069,
+        "resume_s": 0.02040074998512864,
+        "generations": 2,
+        "final_world": 8,
+        "correct": true
+      },
+      {
+        "fault": "slow",
+        "recovered": true,
+        "detect_s": 0.2768036249326542,
+        "abort_s": 0.06675745802931488,
+        "plan_s": 0.006174416979774833,
+        "build_and_migrate_s": 0.027709832997061312,
+        "commit_s": 0.0007140419911593199,
+        "total_s": 0.37815937492996454,
+        "resume_s": 1.908303238451481e-05,
+        "generations": 2,
+        "final_world": 6,
+        "correct": true
+      },
+      {
+        "fault": "slow",
+        "recovered": true,
+        "detect_s": 0.17912720900494605,
+        "abort_s": 0.05661991599481553,
+        "plan_s": 0.004269459052011371,
+        "build_and_migrate_s": 0.04833162494469434,
+        "commit_s": 0.017544750007800758,
+        "total_s": 0.30589295900426805,
+        "resume_s": 1.3665994629263878e-05,
+        "generations": 2,
+        "final_world": 8,
+        "correct": true
+      }
+    ],
+    "recovered": 3,
+    "median": {
+      "detect_s": 0.17912720900494605,
+      "abort_s": 0.05973012500908226,
+      "plan_s": 0.004544208059087396,
+      "build_and_migrate_s": 0.04833162494469434,
+      "commit_s": 0.0071889160899445415,
+      "total_s": 0.30589295900426805,
+      "resume_s": 1.908303238451481e-05
+    },
+    "all_correct": true
+  }
+}

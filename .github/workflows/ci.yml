@@ -1,0 +1,35 @@
+name: cpu-tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  cpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          pip install --index-url https://download.pytorch.org/whl/cpu "torch>=2.10"
+          pip install -e ".[dev]"
+      - name: Fetch pinned Megatron-LM (for the static API contract)
+        run: RESIHP_APPLY_PATCHES=1 bash scripts/setup_megatron.sh
+      - name: Unit + multi-process gloo tests
+        env:
+          GLOO_SOCKET_IFNAME: lo
+        run: pytest -q -m "not gpu" --durations=15
+      - name: Megatron API contract (base + patched)
+        run: python -m resihp.compat.megatron_contract third_party/Megatron-LM
+      - name: ResiBench smoke
+        env:
+          GLOO_SOCKET_IFNAME: lo
+        run: |
+          resihp-bench --out /tmp/rb detection --seeds 3
+          resihp-bench --out /tmp/rb planner --dps 2
+          resihp-bench --out /tmp/rb sim --scales 4096 --seeds 1 --spares 0
+          resihp-bench --out /tmp/rb chaos --trials 1 --faults kill

@@ -1,0 +1,31 @@
+diff --git a/megatron/core/pipeline_parallel/schedules.py b/megatron/core/pipeline_parallel/schedules.py
+index 41fb343..516b89c 100644
+--- a/megatron/core/pipeline_parallel/schedules.py
++++ b/megatron/core/pipeline_parallel/schedules.py
+@@ -50,11 +50,26 @@ except ImportError:
+ Shape = Union[List[int], torch.Size]
+ 
+ 
++_EXTERNAL_FORWARD_BACKWARD_FUNC = None
++
++
++def register_forward_backward_func(func):
++    """Install a forward/backward function returned by ``get_forward_backward_func`` (``None`` resets).
++
++    Lets an external runtime (e.g. an instruction-stream interpreter for heterogeneous,
++    failure-adapted pipelines) drive training without forking the training loop.
++    """
++    global _EXTERNAL_FORWARD_BACKWARD_FUNC
++    _EXTERNAL_FORWARD_BACKWARD_FUNC = func
++
++
+ def get_forward_backward_func(
+     pp_size: Optional[int] = None,
+     vp_size: Optional[int] = None,
+     schedule_pg_collection: Optional[MultiModuleProcessGroupCollection] = None,
+ ):
++    if _EXTERNAL_FORWARD_BACKWARD_FUNC is not None:
++        return _EXTERNAL_FORWARD_BACKWARD_FUNC
+     """Retrieves the appropriate forward_backward function given the
+     configuration of parallel_state.
+ 
